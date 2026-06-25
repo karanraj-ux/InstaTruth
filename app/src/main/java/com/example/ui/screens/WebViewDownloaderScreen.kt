@@ -1,0 +1,126 @@
+package com.example.ui.screens
+
+import android.annotation.SuppressLint
+import android.view.ViewGroup
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+
+@SuppressLint("SetJavaScriptEnabled")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WebViewDownloaderScreen(
+    instagramUrl: String,
+    onNavigateBack: () -> Unit,
+    onVideoExtracted: (String) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Web Extractor") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Automating third-party downloader...", 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "If a captcha appears, please solve it.", 
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.userAgentString =
+                            "Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                if (url != null && url.contains("fastdl.app")) {
+                                    // Inject JavaScript to automatically paste the URL and trigger download
+                                    val js = """
+                                        javascript:(function() {
+                                            var inputs = document.querySelectorAll('input[type="text"], input[type="url"], input.search-form__input');
+                                            if (inputs.length > 0) {
+                                                inputs[0].value = '$instagramUrl';
+                                                var buttons = document.querySelectorAll('button[type="submit"], .button.search-form__button');
+                                                if (buttons.length > 0) {
+                                                    // Trigger input event to ensure React/Vue binds see it
+                                                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                                    setTimeout(function() { buttons[0].click(); }, 800);
+                                                }
+                                            }
+                                        })();
+                                    """.trimIndent()
+                                    view?.evaluateJavascript(js, null)
+                                }
+                            }
+                        }
+
+                        // Listen to download events which fastdl triggers after processing
+                        setDownloadListener { downloadUrl, _, _, mimetype, _ ->
+                            if (downloadUrl.contains(".mp4") || mimetype.contains("video")) {
+                                onVideoExtracted(downloadUrl)
+                                onNavigateBack()
+                            }
+                        }
+
+                        // Also attempt to intercept any direct MP4 URL clicks if the download listener misses it
+                        setOnTouchListener { view, event ->
+                            val hr = (view as WebView).hitTestResult
+                            val extra = hr.extra
+                            if (extra != null && extra.contains(".mp4")) {
+                                onVideoExtracted(extra)
+                                onNavigateBack()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+
+                        loadUrl("https://fastdl.app/en")
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
