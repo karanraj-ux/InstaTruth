@@ -59,7 +59,13 @@ android {
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
-// to match the convention used in Web projects.
+tasks.register("copyApkToRoot", Copy::class) {
+  from(layout.buildDirectory.dir("outputs/apk/debug"))
+  into(rootProject.layout.projectDirectory)
+  include("*.apk")
+  rename { "app-debug.apk" }
+}
+
 secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
