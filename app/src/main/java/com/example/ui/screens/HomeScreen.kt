@@ -27,6 +27,7 @@ fun HomeScreen(
     onNavigateToMissions: () -> Unit,
     onNavigateToLeaderboard: () -> Unit,
     restoredExtractedUrl: String?,
+    initialSharedUrl: String = "",
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
@@ -35,11 +36,24 @@ fun HomeScreen(
     val resultMessage by viewModel.resultMessage.collectAsStateWithLifecycle()
     val extractedVideoUrl by viewModel.extractedVideoUrl.collectAsStateWithLifecycle()
     val analysisReport by viewModel.analysisReport.collectAsStateWithLifecycle()
+    val apiKeyStatus by viewModel.apiKeyStatus.collectAsStateWithLifecycle()
+    val currentModel by viewModel.currentModel.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(initialSharedUrl) {
+        if (initialSharedUrl.isNotBlank() && urlInput.isBlank()) {
+            viewModel.updateUrlInput(initialSharedUrl)
+            onNavigateToWebView(initialSharedUrl) // Auto-extract if it's a shared URL
+        }
+    }
 
     LaunchedEffect(restoredExtractedUrl) {
         if (restoredExtractedUrl != null) {
             viewModel.setExtractedUrl(restoredExtractedUrl)
+            // Auto download for seamless background experience
+            val downloader = VideoDownloader(context)
+            downloader.downloadVideo(restoredExtractedUrl)
+            // Note: AI analysis is left for manual selection by the user
         }
     }
 
@@ -86,6 +100,28 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "API: $apiKeyStatus",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Model: $currentModel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onNavigateToSettings) {
+                    Text("Change")
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(

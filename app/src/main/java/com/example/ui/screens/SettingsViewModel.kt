@@ -21,9 +21,21 @@ class SettingsViewModel(
         initialValue = ""
     )
 
+    val currentModel: StateFlow<String> = repository.geminiModelFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "gemini-2.5-flash"
+    )
+
     fun saveApiKey(key: String) {
         viewModelScope.launch {
             repository.saveApiKey(key)
+        }
+    }
+
+    fun saveModel(model: String) {
+        viewModelScope.launch {
+            repository.saveGeminiModel(model)
         }
     }
 

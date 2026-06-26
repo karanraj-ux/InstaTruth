@@ -22,7 +22,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val savedApiKey by viewModel.apiKey.collectAsStateWithLifecycle()
+    val savedModel by viewModel.currentModel.collectAsStateWithLifecycle()
     var currentInput by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
     
     // Sync local state when saved key loads
     LaunchedEffect(savedApiKey) {
@@ -91,6 +93,35 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = savedModel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Gemini Model") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    listOf("gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-flash").forEach { modelOption ->
+                        DropdownMenuItem(
+                            text = { Text(modelOption) },
+                            onClick = {
+                                viewModel.saveModel(modelOption)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
 

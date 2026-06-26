@@ -72,22 +72,57 @@ fun WebViewDownloaderScreen(
                             "Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
 
                         webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                val urlStr = request?.url?.toString() ?: ""
+                                if (urlStr.contains(".mp4")) {
+                                    onVideoExtracted(urlStr)
+                                    onNavigateBack()
+                                    return true
+                                }
+                                // Block redirects to other domains to prevent ad popups
+                                val isAllowedDomain = urlStr.contains("savefrom.net") || 
+                                                      urlStr.contains("instagram.com") ||
+                                                      urlStr.contains("cdn") ||
+                                                      urlStr.contains("fbcdn")
+                                if (!isAllowedDomain) {
+                                    return true // Cancel load
+                                }
+                                return false
+                            }
+
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                if (url != null && url.contains("fastdl.app")) {
+                                if (url != null && url.contains("savefrom.net")) {
                                     // Inject JavaScript to automatically paste the URL and trigger download
                                     val js = """
                                         javascript:(function() {
-                                            var inputs = document.querySelectorAll('input[type="text"], input[type="url"], input.search-form__input');
-                                            if (inputs.length > 0) {
-                                                inputs[0].value = '$instagramUrl';
-                                                var buttons = document.querySelectorAll('button[type="submit"], .button.search-form__button');
-                                                if (buttons.length > 0) {
-                                                    // Trigger input event to ensure React/Vue binds see it
-                                                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-                                                    setTimeout(function() { buttons[0].click(); }, 800);
+                                            if (!window.injectedUrlPaste) {
+                                                window.injectedUrlPaste = true;
+                                                var inputs = document.querySelectorAll('input[type="text"], input[type="url"], input#sf_url');
+                                                if (inputs.length > 0) {
+                                                    inputs[0].value = '$instagramUrl';
+                                                    var buttons = document.querySelectorAll('button[type="submit"], button#sf_submit');
+                                                    if (buttons.length > 0) {
+                                                        inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                                        setTimeout(function() { buttons[0].click(); }, 800);
+                                                    }
                                                 }
                                             }
+                                            
+                                            setInterval(function() {
+                                                var links = document.querySelectorAll('a');
+                                                for (var i = 0; i < links.length; i++) {
+                                                    var href = links[i].href || '';
+                                                    var text = (links[i].textContent || '').toLowerCase();
+                                                    var isMp4Link = href.indexOf('.mp4') !== -1;
+                                                    var hasDownloadAttr = links[i].getAttribute('download') !== null;
+                                                    
+                                                    if (isMp4Link || (hasDownloadAttr && text.indexOf('mp4') !== -1)) {
+                                                        window.location.href = href;
+                                                        break; // only click first one
+                                                    }
+                                                }
+                                            }, 1000);
                                         })();
                                     """.trimIndent()
                                     view?.evaluateJavascript(js, null)
@@ -116,7 +151,7 @@ fun WebViewDownloaderScreen(
                             }
                         }
 
-                        loadUrl("https://fastdl.app/en")
+                        loadUrl("https://en1.savefrom.net/11Qc/download-from-instagram")
                     }
                 },
                 modifier = Modifier.fillMaxSize()

@@ -21,6 +21,23 @@ import com.example.ui.theme.MyApplicationTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        var initialUrl = ""
+        if (intent?.action == android.content.Intent.ACTION_SEND) {
+            if ("text/plain" == intent.type) {
+                intent.getStringExtra(android.content.Intent.EXTRA_TEXT)?.let { sharedText ->
+                    // Extract URL from shared text
+                    val urlRegex = "(?i)\\b((?:https?://|www\\d{0,3}[.]|[a-z0-9.\\-]+[.][a-z]{2,4}/)(?:[^\\s()<>]+|\\((?:[^\\s()<>]+|\\([^\\s()<>]+\\))*\\))+(?:\\((?:[^\\s()<>]+|\\([^\\s()<>]+\\))*\\)|[^\\s`!()\\[\\]{};:'\".,<>?«»“”‘’]))".toRegex()
+                    val matchResult = urlRegex.find(sharedText)
+                    if (matchResult != null) {
+                        initialUrl = matchResult.value
+                    } else {
+                        initialUrl = sharedText
+                    }
+                }
+            }
+        }
+
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -44,7 +61,8 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToHistory = { navController.navigate("history") },
                                 onNavigateToMissions = { navController.navigate("missions") },
                                 onNavigateToLeaderboard = { navController.navigate("leaderboard") },
-                                restoredExtractedUrl = extractedUrl
+                                restoredExtractedUrl = extractedUrl,
+                                initialSharedUrl = initialUrl
                             )
                         }
                         composable("rooms_gateway") {

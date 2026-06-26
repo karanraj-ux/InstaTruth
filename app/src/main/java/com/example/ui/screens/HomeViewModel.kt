@@ -48,6 +48,29 @@ class HomeViewModel(
     private val _analysisReport = MutableStateFlow<String?>(null)
     val analysisReport: StateFlow<String?> = _analysisReport.asStateFlow()
 
+    private val _apiKeyStatus = MutableStateFlow("Checking API Key...")
+    val apiKeyStatus: StateFlow<String> = _apiKeyStatus.asStateFlow()
+
+    private val _currentModel = MutableStateFlow("gemini-2.5-flash")
+    val currentModel: StateFlow<String> = _currentModel.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.apiKeyFlow.collect { key ->
+                if (key.isNotBlank()) {
+                    _apiKeyStatus.value = "Connected \uD83D\uDFE2"
+                } else {
+                    _apiKeyStatus.value = "Not Connected \uD83D\uDD34 (Add Key)"
+                }
+            }
+        }
+        viewModelScope.launch {
+            repository.geminiModelFlow.collect { model ->
+                _currentModel.value = model
+            }
+        }
+    }
+
     private val scraper = InstagramScraper()
 
     fun updateUrlInput(url: String) {
@@ -151,7 +174,7 @@ class HomeViewModel(
                     )))
                 )
 
-                val response = RetrofitClient.geminiService.generateContent(apiKey, request)
+                val response = RetrofitClient.geminiService.generateContent(_currentModel.value, apiKey, request)
                 val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
                 
                 val reportText = text ?: "Analysis returned no results."
