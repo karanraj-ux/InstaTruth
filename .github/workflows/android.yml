@@ -21,14 +21,16 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
     - name: Decode Keystore
       run: base64 -d debug.keystore.base64 > debug.keystore || echo "No base64 keystore found"
 
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '9.3.1'
+
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: gradle assembleDebug
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
