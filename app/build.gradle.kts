@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -12,7 +14,7 @@ android {
 
   defaultConfig {
     applicationId = "com.aistudio.factcheck.plrmno"
-    minSdk = 24
+    minSdk = 21
     targetSdk = 35
     versionCode = 1
     versionName = "1.0"
@@ -63,7 +65,7 @@ tasks.register("copyApkToRoot", Copy::class) {
   from(layout.buildDirectory.dir("outputs/apk/debug"))
   into(rootProject.layout.projectDirectory)
   include("*.apk")
-  rename { "app-debug.apk" }
+  rename { "InstaTruth.apk" }
 }
 
 secrets {
